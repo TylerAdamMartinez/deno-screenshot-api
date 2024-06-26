@@ -5,20 +5,38 @@ const server = serve({ port: 8000 });
 
 console.log("HTTP webserver running on port 8000");
 
-for await (const req of server) {
-  const url = new URL(req.url, `http://${req.headers.get("host")}`);
-  const targetUrl = url.searchParams.get("url");
+for await (const conn of server) {
+  handle(conn);
+}
 
-  if (!targetUrl) {
-    req.respond({ status: 400, body: "Missing 'url' query parameter" });
-    continue;
-  }
+async function handle(conn: Deno.Conn) {
+  const httpConn = Deno.serveHttp(conn);
+  for await (const requestEvent of httpConn) {
+    const url = new URL(requestEvent.request.url);
+    const targetUrl = url.searchParams.get("url");
 
-  try {
-    const screenshot = await takeScreenshot(targetUrl);
-    req.respond({ status: 200, body: JSON.stringify({ screenshot }) });
-  } catch (error) {
-    req.respond({ status: 500, body: `Failed to take screenshot: ${error.message}` });
+    if (!targetUrl) {
+      requestEvent.respondWith(
+        new Response("Missing 'url' query parameter", { status: 400 })
+      );
+      continue;
+    }
+
+    try {
+      const screenshot = await takeScreenshot(targetUrl);
+      requestEvent.respondWith(
+        new Response(JSON.stringify({ screenshot }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    } catch (error) {
+      requestEvent.respondWith(
+        new Response(`Failed to take screenshot: ${error.message}`, {
+          status: 500,
+        })
+      );
+    }
   }
 }
 
