@@ -1,11 +1,10 @@
-import { serve } from "https://deno.land/std@0.180.0/http/server.ts";
 import { takeScreenshot } from "./puppeteer.ts";
 
-const server = serve({ port: 8000 });
+const listener = Deno.listen({ port: 8000 });
 
 console.log("HTTP webserver running on port 8000");
 
-for await (const conn of server) {
+for await (const conn of listener) {
   handle(conn);
 }
 
